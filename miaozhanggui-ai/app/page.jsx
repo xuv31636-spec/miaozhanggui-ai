@@ -18,30 +18,71 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function askCat() {
-    const question = (customProblem.trim() || problem).trim();
-    if (!question) {
-      setError("先告訴本喵，你的門市遇到什麼問題。");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setResult(null);
-    try {
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem: question, personality, mode })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "喵？這次沒有成功取得回答。");
-      setResult(data.result);
-    } catch (err) {
-      setError(err.message || "連線失敗，請稍後再試。");
-    } finally {
-      setLoading(false);
-    }
+  
+async function askCat() {
+  const question = (customProblem.trim() || problem).trim();
+
+  if (!question) {
+    setError("先告訴本喵，你的門市遇到什麼問題。");
+    return;
   }
+
+  setLoading(true);
+  setError("");
+  setResult(null);
+
+  try {
+    const response = await fetch("/api/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        problem: question,
+        personality,
+        mode,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || `請求失敗，HTTP ${response.status}`
+      );
+    }
+
+    // 後端直接回傳報告物件，不是 { result: ... }
+    if (
+      !data ||
+      typeof data.roast !== "string" ||
+      !Array.isArray(data.analysis) ||
+      !Array.isArray(data.actions) ||
+      typeof data.seven_day_plan !== "string" ||
+      !Array.isArray(data.kpis) ||
+      typeof data.cautions !== "string"
+    ) {
+      throw new Error("收到的分析報告格式不正確，請重新嘗試。");
+    }
+
+    setResult(data);
+
+    // 分析完成後，捲動到報告區域
+    setTimeout(() => {
+      document
+        .querySelector(".results")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  } catch (err) {
+    console.error("喵掌櫃分析失敗：", err);
+    setError(
+      err.message || "連線失敗，請確認網路與 API 設定後再試。"
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
 
   return (
     <main className="page-shell">
