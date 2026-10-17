@@ -27,9 +27,9 @@ export async function POST(request) {
 }
 `;
 
-    // 使用 gemini-2.0-flash 確保穩定與免費用戶支援
+    // 使用官方最新指定的 gemini-3.8-flash 模型
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
