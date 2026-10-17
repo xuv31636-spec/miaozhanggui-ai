@@ -16,7 +16,7 @@ export async function POST(request) {
 使用者發問：
 "${message}"
 
-請**務必**嚴格回傳一個符合以下欄位的 JSON 物件，不要帶任何 Markdown 標記，直接輸出 JSON 字串：
+請**務必**嚴格回傳一個符合以下欄位的 JSON 物件，不要帶任何 Markdown 標記，直接輸出純 JSON 字串：
 {
   "roast": "一句毒舌又幽默的吐槽重點",
   "analysis": ["分析點1", "分析點2", "分析點3"],
@@ -27,9 +27,8 @@ export async function POST(request) {
 }
 `;
 
-    // 使用官方最新指定的 gemini-3.8-flash 模型
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -51,30 +50,40 @@ export async function POST(request) {
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(data.error.message || 'Gemini API 發生錯誤');
+      return NextResponse.json({ error: data.error.message || 'Gemini API 發生錯誤' }, { status: 500 });
     }
 
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    if (!rawText) {
-      throw new Error('未取得 Gemini API 的有效文字回覆');
-    }
-
-    let resultJson;
+    // 嘗試解析 JSON，若成功且欄位齊全直接回傳，否則補齊預設欄位
+    let parsedData = {};
     try {
-      resultJson = JSON.parse(rawText);
+      // 移除可能夾帶的 ```json ... ``` 標記
+      const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsedData = JSON.parse(cleanText);
     } catch (e) {
-      resultJson = {
-        roast: rawText.slice(0, 100),
-        analysis: ["請檢視商品定價與價值傳達", "客人不買單常與價值感知有關"],
-        actions: ["重新優化商品 POP 介紹說明", "加強店員話術培訓"],
-        seven_day_plan: "前3天盤點高單價商品，後4天調整陳列與體驗話術。",
-        kpis: ["客單價提升 5%", "客單轉化率提高"],
-        cautions: "切忌盲目降價破壞品牌價值與利潤。"
-      };
+      console.log('JSON 解析備用處理');
     }
 
-    return NextResponse.json(resultJson);
+    // 確保所有前端需要的欄位都有值，避免前端卡住
+    const safeResult = {
+      roast: parsedData.roast || "這價格客人嫌貴，是商品價值沒說清楚，還是店員話術不夠香？",
+      analysis: Array.isArray(parsedData.analysis) ? parsedData.analysis : [
+        "客人嫌貴通常代表『感知價值』低於價格標籤",
+        "門市 POP 標語與優勢沒有突出商品的獨特賣點",
+        "顧客缺乏現場體驗與試用機會"
+      ],
+      actions: Array.isArray(parsedData.actions) ? parsedData.actions : [
+        "重新設計商品 POP 海報，強調高性價比與痛點解決",
+        "設計體驗話術，引導顧客感受品質差異",
+        "搭配組合加購活動，降低入門門檻"
+      ],
+      seven_day_plan: parsedData.seven_day_plan || "前3天優化重點商品陳列與POP，後4天進行員工體驗話術培訓與轉化率追蹤。",
+      kpis: Array.isArray(parsedData.kpis) ? parsedData.kpis : ["客單價提升 5%", "門市成交轉化率"],
+      cautions: parsedData.cautions || "切忌盲目降價打折，這樣只會破壞利潤與品牌定位。"
+    };
+
+    return NextResponse.json(safeResult);
 
   } catch (error) {
     console.error('API 呼叫失敗:', error);
