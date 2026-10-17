@@ -49,9 +49,13 @@ export async function POST(request) {
 
     const data = await response.json();
 
-    if (data.error) {
-      return NextResponse.json({ error: data.error.message || 'Gemini API 發生錯誤' }, { status: 500 });
-    }
+   if (data.error) {
+  console.error('Gemini API 錯誤：', JSON.stringify(data.error));
+  return NextResponse.json(
+    { error: data.error.message || 'Gemini API 發生錯誤' },
+    { status: 500 }
+  );
+}
 
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
