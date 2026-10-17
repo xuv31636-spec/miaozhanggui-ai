@@ -12,7 +12,7 @@ export async function POST(request) {
     // 組合系統提示詞與使用者訊息
     const promptText = `${systemInstruction || '你是一個專業的店長助手。'}\n\n使用者詢問：${message}`;
 
-    // 呼叫 Google Gemini 1.5 Flash 免費 API
+    // 呼叫 Google Gemini API（修正模型路徑為 models/gemini-1.5-flash）
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
