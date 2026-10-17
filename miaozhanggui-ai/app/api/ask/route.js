@@ -9,11 +9,10 @@ export async function POST(request) {
       return NextResponse.json({ error: '伺服器未設定 GEMINI_API_KEY 環境變數' }, { status: 500 });
     }
 
-    // 組合系統提示詞與使用者訊息
-    const promptText = `${systemInstruction || '你是一個專業的店長助手。'}\n\n使用者詢問：${message}`;
+    const promptText = `${systemInstruction || '你是一個專業的門市店長助手。'}\n\n使用者詢問：${message}`;
 
-    // 呼叫 Google Gemini API（修正模型路徑為 models/gemini-1.5-flash）
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // 嘗試呼叫 Gemini 1.5 Flash
+    let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -29,13 +28,32 @@ export async function POST(request) {
       })
     });
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // 如果 1.5-flash 找不到，自動嘗試 2.0-flash 或 gemini-pro
+    if (data.error && data.error.code === 404) {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: promptText }
+              ]
+            }
+          ]
+        })
+      });
+      data = await response.json();
+    }
 
     if (data.error) {
       throw new Error(data.error.message || 'Gemini API 發生錯誤');
     }
 
-    // 取得 Gemini 回傳的文字內容
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '無法取得 AI 回覆';
 
     return NextResponse.json({ reply });
