@@ -11,8 +11,8 @@ export async function POST(request) {
 
     const promptText = `${systemInstruction || '你是一個專業的門市店長助手。'}\n\n使用者詢問：${message}`;
 
-    // 優先使用 gemini-2.5-flash 最新模型
-    let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    // 使用官方標準 REST 呼叫格式 (不帶 models/ 前綴)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -28,27 +28,7 @@ export async function POST(request) {
       })
     });
 
-    let data = await response.json();
-
-    // 若 2.5-flash 遇到問題，自動退回嘗試 gemini-1.5-flash
-    if (data.error) {
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: promptText }
-              ]
-            }
-          ]
-        })
-      });
-      data = await response.json();
-    }
+    const data = await response.json();
 
     if (data.error) {
       throw new Error(data.error.message || 'Gemini API 發生錯誤');
