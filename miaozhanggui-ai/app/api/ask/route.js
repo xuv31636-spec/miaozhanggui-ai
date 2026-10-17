@@ -27,61 +27,45 @@ export async function POST(request) {
 }
 `;
 
-    // 優先嘗試的名單（由新到舊）
-    const candidateModels = [
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro'
-    ];
-
-    let reply = null;
-    let lastError = null;
-
-    for (const modelName of candidateModels) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [{ text: promptText }]
-                }
-              ],
-              generationConfig: {
-                responseMimeType: "application/json"
-              }
-            })
+    // 使用 gemini-2.0-flash 確保穩定與免費用戶支援
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: promptText }]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json"
           }
-        );
-
-        const data = await response.json();
-
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          reply = data.candidates[0].content.parts[0].text;
-          break; // 成功回覆即跳出
-        } else if (data.error) {
-          lastError = data.error.message;
-        }
-      } catch (err) {
-        lastError = err.message;
+        })
       }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message || 'Gemini API 發生錯誤');
     }
 
-    if (!reply) {
-      throw new Error(lastError || '無法從 Gemini API 取得有效回覆');
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      throw new Error('未取得 Gemini API 的有效文字回覆');
     }
 
     let resultJson;
     try {
-      resultJson = JSON.parse(reply);
+      resultJson = JSON.parse(rawText);
     } catch (e) {
       resultJson = {
-        roast: reply.slice(0, 100),
+        roast: rawText.slice(0, 100),
         analysis: ["請檢視商品定價與價值傳達", "客人不買單常與價值感知有關"],
         actions: ["重新優化商品 POP 介紹說明", "加強店員話術培訓"],
         seven_day_plan: "前3天盤點高單價商品，後4天調整陳列與體驗話術。",
