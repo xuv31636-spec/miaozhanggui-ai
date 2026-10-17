@@ -11,8 +11,8 @@ export async function POST(request) {
 
     const promptText = `${systemInstruction || '你是一個專業的門市店長助手。'}\n\n使用者詢問：${message}`;
 
-    // 嘗試呼叫 Gemini 1.5 Flash
-    let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // 優先使用 gemini-2.5-flash 最新模型
+    let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -30,9 +30,9 @@ export async function POST(request) {
 
     let data = await response.json();
 
-    // 如果 1.5-flash 找不到，自動嘗試 2.0-flash 或 gemini-pro
-    if (data.error && data.error.code === 404) {
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    // 若 2.5-flash 遇到問題，自動退回嘗試 gemini-1.5-flash
+    if (data.error) {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
