@@ -9,7 +9,6 @@ export async function POST(request) {
       return NextResponse.json({ error: '伺服器未設定 GEMINI_API_KEY 環境變數' }, { status: 500 });
     }
 
-    // 提示詞要求 Gemini 輸出 JSON 格式，確保前端網頁元件能順利解析呈現
     const promptText = `
 你是一個專業的門市營運分析 AI（喵掌櫃）。
 語氣與風格要求：${systemInstruction || '毒舌幽默、專業分析'}。
@@ -28,9 +27,9 @@ export async function POST(request) {
 }
 `;
 
-    // 使用穩定版 gemini-1.5-flash endpoint
+    // 呼叫 Google Gemini API (使用 gemini-2.5-flash)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -61,12 +60,10 @@ export async function POST(request) {
       throw new Error('未取得 Gemini API 的有效文字回覆');
     }
 
-    // 解析 JSON 並回傳給前端
     let resultJson;
     try {
       resultJson = JSON.parse(rawText);
     } catch (e) {
-      // 萬一解析失敗，提供相容的預設回應格式
       resultJson = {
         roast: rawText.slice(0, 100),
         analysis: ["請檢視商品定價與價值傳達", "客人不買單常與價值感知有關"],
