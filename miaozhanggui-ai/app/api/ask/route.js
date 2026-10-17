@@ -11,40 +11,42 @@ export async function POST(request) {
 
     const promptText = `${systemInstruction || '你是一個專業的門市店長助手。'}\n\n使用者詢問：${message}`;
 
-    // 定義可使用的模型順序清單
+    // 正確的 Gemini API 模型路徑 (帶有 models/ 前綴)
     const models = [
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-pro'
+      'models/gemini-1.5-flash',
+      'models/gemini-1.5-flash-latest',
+      'models/gemini-1.5-pro'
     ];
 
     let reply = null;
     let lastError = null;
 
-    // 依序嘗試不同模型名稱，直到成功為止
-    for (const model of models) {
+    for (const modelPath of models) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: promptText }
-                ]
-              }
-            ]
-          })
-        });
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: promptText }
+                  ]
+                }
+              ]
+            })
+          }
+        );
 
         const data = await response.json();
 
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
           reply = data.candidates[0].content.parts[0].text;
-          break; // 成功取得回覆，跳出迴圈
+          break; // 成功回覆，停止嘗試
         } else if (data.error) {
           lastError = data.error.message;
         }
@@ -54,7 +56,7 @@ export async function POST(request) {
     }
 
     if (!reply) {
-      throw new Error(lastError || '無法從 Gemini API 取得有效回覆');
+      throw new Error(lastError || '無法取得 AI 回覆');
     }
 
     return NextResponse.json({ reply });
